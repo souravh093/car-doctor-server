@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const jwt = require("jsonwebtoken");
 require("dotenv").config();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
@@ -32,7 +33,18 @@ async function run() {
     const servicesCollection = client.db("carDoctor").collection("services");
     const bookingCollection = client.db("carDoctor").collection("bookings");
 
-    // services
+    app.post("/jwt", (req, res) => {
+      const user = req.body;
+      console.log(user);
+
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: "1h",
+      });
+      console.log(token)
+      res.send({token});
+    });
+
+    // services routes
     app.get("/services", async (req, res) => {
       const cursor = servicesCollection.find();
       const result = await cursor.toArray();
@@ -43,20 +55,57 @@ async function run() {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const options = {
-        projection: { price: 1, title: 1, service_id: 1, img: 1, description: 1 },
+        projection: {
+          price: 1,
+          title: 1,
+          service_id: 1,
+          img: 1,
+          description: 1,
+        },
       };
       const result = await servicesCollection.findOne(query, options);
       res.send(result);
     });
 
-    // Bookings
-    app.post("/bookings", async(req, res) => {
+    // Bookings routes
+    app.post("/bookings", async (req, res) => {
       const booking = req.body;
-      console.log(booking)
-      const result = await bookingCollection.insertOne(booking)
-      res.send(result)
-    })
+      console.log(booking);
+      const result = await bookingCollection.insertOne(booking);
+      res.send(result);
+    });
 
+    app.get("/booking", async (req, res) => {
+      let query = {};
+      if (req.query?.email) {
+        query = { email: req.query.email };
+      }
+      const result = await bookingCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    app.delete("/bookings/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await bookingCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    app.patch("/bookings/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedBooking = req.body;
+
+      console.log(updatedBooking);
+
+      const updateDoc = {
+        $set: {
+          status: updatedBooking.status,
+        },
+      };
+      const result = await bookingCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
