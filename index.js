@@ -15,7 +15,8 @@ app.get("/", (req, res) => {
   res.send("Doctor is running");
 });
 
-const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.6bquvki.mongodb.net/?retryWrites=true&w=majority`;
+// const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.6bquvki.mongodb.net/?retryWrites=true&w=majority`;
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.ukmkwhb.mongodb.net/?retryWrites=true&w=majority`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -62,7 +63,7 @@ async function run() {
       console.log(user);
 
       const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
-        expiresIn: '1h',
+        expiresIn: "1h",
       });
       console.log(token);
       res.send({ token });
@@ -70,7 +71,15 @@ async function run() {
 
     // services routes
     app.get("/services", async (req, res) => {
-      const cursor = servicesCollection.find();
+      const sort = req.query.sort;
+      // const query = {};
+      const query = { price: {$gte:50, $lte:150} }
+      const option = {
+        sort: { 
+          "price": sort === 'asc' ? 1 : -1
+        },
+      };
+      const cursor = servicesCollection.find(query, option);
       const result = await cursor.toArray();
       res.send(result);
     });
@@ -103,7 +112,7 @@ async function run() {
       const decoded = req.decoded;
       console.log("came back after verify", decoded);
       if (decoded.email !== req.query.email) {
-        return res.status(403).send({error: 1, message: 'forbidden access'})
+        return res.status(403).send({ error: 1, message: "forbidden access" });
       }
       let query = {};
       if (req.query?.email) {
